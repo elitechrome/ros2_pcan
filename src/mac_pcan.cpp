@@ -1,46 +1,40 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
+#include <chrono>
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
 
-#define PCAN_CHANNEL PCAN_USBBUS1
-#define PCAN_BAUDRATE PCAN_BAUD_500K
+using namespace std::chrono_literals;
 
-#ifndef __APPLE__
-#include <asm/types.h>
-#define DWORD  __u32
-#define WORD   unsigned short
-#define BYTE   unsigned char
-#define LPSTR  char *
-#include "PCANBasic.h"
-#else
-#include "PCBUSB.h"
-#endif
+/* This example creates a subclass of Node and uses std::bind() to register a
+ * member function as a callback from the timer. */
+
+class MacPCANNode : public rclcpp::Node
+{
+public:
+  MacPCANNode()
+  : Node("mac_pcan"), count_(0)
+  {
+    publisher_ = this->create_publisher<std_msgs::msg::String>("topic");
+    timer_ = this->create_wall_timer(
+      500ms, std::bind(&MacPCANNode::timer_callback, this));
+  }
+
+private:
+  void timer_callback()
+  {
+    auto message = std_msgs::msg::String();
+    message.data = "Hello, world! " + std::to_string(count_++);
+    RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+    publisher_->publish(message);
+  }
+  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+  size_t count_;
+};
 
 int main(int argc, char * argv[])
 {
-  (void) argc; (void) argv;
-  TPCANMsg message;
-  TPCANStatus status;
-  unsigned long n = 0;
-
-  status = CAN_Initialize(PCAN_CHANNEL, PCAN_BAUDRATE, 0, 0, 0);
-  printf("Initialize CAN: 0x%lx\n", status);
-  if (status != PCAN_ERROR_OK) {goto leave;}
-
-  message.ID = 0x100;
-  message.LEN = 8;
-  message.MSGTYPE = PCAN_MESSAGE_STANDARD;
-  memset(message.DATA, 0x00, message.LEN);
-
-  for (;; ) {
-    while ((status = CAN_Write(PCAN_CHANNEL, &message)) == PCAN_ERROR_OK) {
-      message.DATA[0]++;
-      if ((++n % 1000) == 0) {
-        printf("  - T Message %lu\n", n);
-      }
-    }
-  }
-leave:
-  CAN_Uninitialize(PCAN_NONEBUS);
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<MacPCANNode>());
+  rclcpp::shutdown();
   return 0;
 }
