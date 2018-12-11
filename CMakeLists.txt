@@ -20,17 +20,20 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rmw_implementation REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(can_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 include_directories(
  ${rclcpp_INCLUDE_DIRS}
  ${std_msgs_INCLUDE_DIRS}
+ ${can_msgs_INCLUDE_DIRS}
  )
 add_executable(mac_pcan src/mac_pcan.cpp)
 ament_target_dependencies(mac_pcan
  rclcpp
  std_msgs
+ can_msgs
  rmw_implementation
  )
 target_link_libraries(mac_pcan PCBUSB)
